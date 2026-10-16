@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Mall Management System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    body { font-family: Arial; margin: 40px; }
+    input, button { padding: 6px; margin: 4px; }
+    button { cursor: pointer; }
+    table { border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #999; padding: 8px 14px; }
+    dialog { border: 1px solid #999; padding: 20px; }
+    dialog input { display: block; width: 220px; }
+  </style>
+</head>
+<body>
+  <h2>Mall Management System - Shops</h2>
+
+  <input id="shop_name" placeholder="Shop Name">
+  <input id="owner_name" placeholder="Owner Name">
+  <input id="floor_no" type="number" placeholder="Floor No">
+  <input id="rent" type="number" placeholder="Rent">
+  <button onclick="addShop()"><i class="fa-solid fa-plus"></i> Add Shop</button>
+
+  <table>
+    <thead>
+      <tr><th>ID</th><th>Shop Name</th><th>Owner</th><th>Floor</th><th>Rent</th><th>Actions</th></tr>
+    </thead>
+    <tbody id="list"></tbody>
+  </table>
+
+  <!-- Edit dialog -->
+  <dialog id="editDialog">
+    <h3>Edit Shop</h3>
+    <input id="edit_name" placeholder="Shop Name">
+    <input id="edit_owner" placeholder="Owner Name">
+    <input id="edit_floor" type="number" placeholder="Floor No">
+    <input id="edit_rent" type="number" placeholder="Rent">
+    <button onclick="updateShop()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+    <button onclick="editDialog.close()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+  </dialog>
+
+  <script>
+    let editId = null;
+
+    // fetch that shows server errors (e.g. database login problems) in a popup
+    async function api(url, options) {
+      const res = await fetch(url, options);
+      if (!res.ok) alert(await res.text());
+      return res;
+    }
+
+    // READ
+    async function loadShops() {
+      const res = await api("/shops");
+      if (!res.ok) return;
+      const shops = await res.json();
+      document.getElementById("list").innerHTML = shops.map(s => `
+        <tr>
+          <td>${s.shop_id}</td><td>${s.shop_name}</td><td>${s.owner_name}</td>
+          <td>${s.floor_no}</td><td>${s.rent}</td>
+          <td>
+            <button onclick='openEdit(${JSON.stringify(s)})'><i class="fa-solid fa-pen"></i> Edit</button>
+            <button onclick="deleteShop(${s.shop_id})"><i class="fa-solid fa-trash"></i> Delete</button>
+          </td>
+        </tr>`).join("");
+    }
+
+    // CREATE
+    async function addShop() {
+      const shop = {
+        shop_name: shop_name.value,
+        owner_name: owner_name.value,
+        floor_no: floor_no.value,
+        rent: rent.value
+      };
+      await api("/shops", { method: "POST", body: new URLSearchParams(shop) });
+      shop_name.value = owner_name.value = floor_no.value = rent.value = "";
+      loadShops();
+    }
+
+    // open the edit dialog filled with the shop's details
+    function openEdit(s) {
+      editId = s.shop_id;
+      edit_name.value = s.shop_name;
+      edit_owner.value = s.owner_name;
+      edit_floor.value = s.floor_no;
+      edit_rent.value = s.rent;
+      editDialog.showModal();
+    }
+
+    // UPDATE
+    async function updateShop() {
+      const shop = {
+        shop_name: edit_name.value,
+        owner_name: edit_owner.value,
+        floor_no: edit_floor.value,
+        rent: edit_rent.value
+      };
+      await api(`/shops/${editId}`, { method: "PUT", body: new URLSearchParams(shop) });
+      editDialog.close();
+      loadShops();
+    }
+
+    // DELETE
+    async function deleteShop(id) {
+      if (!confirm("Delete this shop?")) return;
+      await api(`/shops/${id}`, { method: "DELETE" });
+      loadShops();
+    }
+
+    loadShops();
+  </script>
+</body>
+</html>
